@@ -1,0 +1,105 @@
+-- Questão 2603, link: https://judge.beecrowd.com/pt/problems/view/2603
+
+
+SELECT name, street FROM customers WHERE city::text = 'Porto Alegre';
+
+-- Questão 2626, link: https://judge.beecrowd.com/pt/problems/view/2616
+
+SELECT customers.id, customers.name 
+FROM customers 
+LEFT JOIN locations ON customers.id = locations.id_customers 
+WHERE locations.id_customers IS NULL;
+
+
+-- Questão 2738, link:  https://judge.beecrowd.com/pt/problems/view/2738
+
+SELECT candidate.name,
+ROUND(((score.math*2.0)+(score.specific*3.0)+(score.project_plan*5.0))/10.0,2) AS media
+FROM candidate
+JOIN score ON candidate.id = score.candidate_id
+ORDER BY media DESC;
+
+-- Questão 2609, link: https://judge.beecrowd.com/pt/problems/view/2609
+
+SELECT categories.name, SUM(products.amount) as sum
+FROM products
+LEFT JOIN categories ON products.id_categories = categories.id
+GROUP BY categories.name;
+
+-- Questão 2998, link: https://judge.beecrowd.com/pt/problems/view/2998
+
+SELECT A.name, A.investment, A.month_of_payback, A.return
+FROM
+    (SELECT 
+        R.name,
+        R.investment,
+        R.month AS month_of_payback,
+        R.cumulative_sum - R.investment AS return,
+        row_number() OVER (PARTITION BY R.name ORDER BY R.month) AS row_num
+    FROM
+        (
+            SELECT 
+                clients.name, 
+                clients.investment,
+                operations.month,
+                SUM(operations.profit) OVER (PARTITION BY operations.client_id ORDER BY operations.month)
+                    AS cumulative_sum
+            FROM 
+                clients
+            LEFT JOIN 
+                operations 
+                    ON clients.id = operations.client_id
+        ) as R
+    WHERE (R.cumulative_sum - R.investment) >= 0
+    ) as A
+WHERE A.row_num = 1;
+
+
+-- Questão 2998, link: https://judge.beecrowd.com/pt/problems/view/2989
+SELECT
+	departamento.nome AS departamento,
+	divisao.nome AS divisao,
+	ROUND(AVG(salarios_liq.salario), 2) AS media,
+	ROUND(MAX(salarios_liq.salario), 2) AS maior
+FROM (
+	SELECT
+	venc_agrupados.lotacao,
+	venc_agrupados.lotacao_div,
+	ROUND(SUM(total_vencimentos) - COALESCE(SUM(total_descontos), 0), 2) AS salario
+	FROM (
+
+		SELECT
+			empregado.matr,
+			empregado.lotacao,
+			empregado.lotacao_div,
+			COALESCE(SUM(vencimento.valor), 0) AS total_vencimentos
+		FROM empregado
+		LEFT JOIN emp_venc
+			ON empregado.matr = emp_venc.matr
+		LEFT JOIN vencimento
+			ON emp_venc.cod_venc = vencimento.cod_venc
+		GROUP BY empregado.matr, empregado.lotacao, empregado.lotacao_div
+		) AS venc_agrupados
+		LEFT JOIN (
+			SELECT
+				empregado.matr,
+				empregado.lotacao,
+				empregado.lotacao_div,
+				COALESCE(SUM(desconto.valor), 0) AS total_descontos
+			FROM empregado
+			LEFT JOIN emp_desc
+				ON empregado.matr = emp_desc.matr
+			LEFT JOIN desconto
+				ON emp_desc.cod_desc = desconto.cod_desc
+			GROUP BY empregado.matr, empregado.lotacao, empregado.lotacao_div
+		) AS desc_agrupados
+			ON venc_agrupados.matr = desc_agrupados.matr
+	GROUP BY venc_agrupados.matr, venc_agrupados.lotacao, venc_agrupados.lotacao_div
+) AS salarios_liq
+INNER JOIN divisao
+	ON salarios_liq.lotacao_div = divisao.cod_divisao
+INNER JOIN departamento
+	ON salarios_liq.lotacao = departamento.cod_dep
+GROUP BY divisao.nome, departamento.nome
+ORDER BY media DESC;
+
